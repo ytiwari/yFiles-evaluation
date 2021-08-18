@@ -8,6 +8,7 @@
  import SampleCSVComponent from './components/sample-csv/sampleCsv';
  import OrganisationalChart from './components/organisational/OrganisationalChart';
  import TransitivityReactDemo from './components/transitivity/TransitivityReactDemo';
+ import NetworkFlowReactDemo from './components/networkflows/NetworkFlowReactDemo';
  import DemoDescription from './components/DemoDescription.jsx'
  import yLogo from './assets/ylogo.svg'
  import DemoDataPanel from './components/DemoDataPanel.jsx'
@@ -25,6 +26,7 @@ function App(){
         <Route exact={true} path='/Tripudio-PLM/example4' component={SampleCSVComponent} />
         <Route exact={true} path='/Tripudio-PLM/example5' component={OrganisationalChart} />
         <Route exact={true} path='/Tripudio-PLM/example6' component={TransitivityReactDemo} />
+        <Route exact={true} path='/Tripudio-PLM/example7' component={NetworkFlowReactDemo} />
         </main>
       </div>
     );

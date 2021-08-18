@@ -1,6 +1,6 @@
 /****************************************************************************
  ** @license
- ** This demo file is part of yFiles for HTML 2.4.
+ ** This demo file is part of yFiles for HTML 2.4.0.2.
  ** Copyright (c) 2000-2021 by yWorks GmbH, Vor dem Kreuzberg 28,
  ** 72070 Tuebingen, Germany. All rights reserved.
  **
@@ -85,6 +85,15 @@ import {
 import GraphData from './resources/yfiles-modules-data.js'
 import PackageNodeStyleDecorator from './PackageNodeStyleDecorator.js'
 import MagnifyNodeHighlightInstaller from './MagnifyNodeHighlightInstaller.js'
+import {
+  addClass,
+  bindAction,
+  bindChangeListener,
+  bindCommand,
+  checkLicense,
+  removeClass,
+  showApp
+} from '../../resources/demo-app.js'
 import loadJson from '../../resources/load-json.js'
 
 /**
@@ -96,7 +105,7 @@ import loadJson from '../../resources/load-json.js'
 /**
  * The port of the proxy server for the npm package API.
  */
-const proxyPort = window.location.protocol !== 'file:' && window.location.port !== '80' ? window.location.port : '4242'
+const proxyPort = location.protocol !== 'file:' && location.port !== '80' ? location.port : '4242'
 
 /**
  * Maximum number of npm modules to add before resorting to expand-functionality
@@ -170,6 +179,11 @@ let layoutInProgress = false
  * @param {boolean} inProgress
  */
 function setLayoutInProgress(inProgress) {
+  if (!busy) {
+    // only change toolbar-state when not busy loading npm-packages
+    // since there are layout calculations during loading
+    setUIDisabled(inProgress)
+  }
   layoutInProgress = inProgress
 }
 
@@ -185,9 +199,18 @@ let busy = false
  * @param {boolean} isBusy
  */
 function setBusy(isBusy) {
+  setUIDisabled(isBusy)
   setLoadingIndicatorVisibility(isBusy)
   busy = isBusy
 }
+
+/**
+ * Combo box to select one of the different algorithms.
+ * It provides access to transitive reduction, transitive closure and returning to the original
+ * graph.
+ * @type {HTMLSelectElement}
+ */
+let algorithmComboBox
 
 /**
  * Text box to request the dependency graph for a certain npm-package.
@@ -195,6 +218,14 @@ function setBusy(isBusy) {
  * @type {HTMLInputElement}
  */
 let packageTextBox
+
+/**
+ * Combo box to select one of the two samples.
+ * There is an dependency graph of the <em>yFiles for HTML</em> modules as well as the possibility
+ * to browse npm-packages with their dependencies.
+ * @type {HTMLSelectElement}
+ */
+let samplesComboBox
 
 /**
  * Holds all edges that are added when calculating the transitive closure.
@@ -288,9 +319,12 @@ let dependenciesNo = 0
  * Starts a demo that shows how to use the yFiles transitivity algorithms.
  * @param {*} licenseData
  */
-export default function run(gc, licenseData) {
+function run(licenseData) {
   License.value = licenseData
-  graphComponent = gc
+  graphComponent = new GraphComponent('graphComponent')
+
+  samplesComboBox = document.getElementById('samplesComboBox')
+  algorithmComboBox = document.getElementById('algorithmComboBox')
 
   // use a filtered graph to have control over which nodes and edges are visible at any time
   filteredGraph = new FilteredGraphWrapper(graphComponent.graph, nodePredicate, edgePredicate)
@@ -303,6 +337,12 @@ export default function run(gc, licenseData) {
   initializeGraph()
 
   loadGraph()
+
+  setLoadingIndicatorVisibility(false)
+
+  registerCommands()
+
+  showApp(graphComponent)
 }
 
 /**
@@ -312,6 +352,69 @@ export default function run(gc, licenseData) {
  */
 function getUndoEngine(graphComponent) {
   return graphComponent.graph.undoEngine
+}
+
+/**
+ * Registers the JavaScript commands for the GUI elements, typically the
+ * tool bar buttons, during the creation of this application.
+ */
+function registerCommands() {
+  bindCommand("button[data-command='FitContent']", ICommand.FIT_GRAPH_BOUNDS, graphComponent)
+  bindCommand("button[data-command='ZoomIn']", ICommand.INCREASE_ZOOM, graphComponent)
+  bindCommand("button[data-command='ZoomOut']", ICommand.DECREASE_ZOOM, graphComponent)
+  bindCommand("button[data-command='Undo']", ICommand.UNDO, graphComponent)
+  bindCommand("button[data-command='Redo']", ICommand.REDO, graphComponent)
+
+  bindChangeListener("select[data-command='SampleSelectionChanged']", onSampleGraphChanged)
+  bindChangeListener("select[data-command='AlgorithmSelectionChanged']", onAlgorithmChanged)
+  bindAction("button[data-command='LoadDependencies']", loadGraph)
+
+  bindAction("button[data-command='RunLayout']", () => {
+    applyLayout(false)
+  })
+
+  bindAction("input[data-command='ShowTransitiveEdges']", async () => {
+    const button = document.getElementById('showTransitiveEdgesButton')
+    showTransitiveEdges = !!button && button.checked
+    if (algorithmComboBox.selectedIndex === 2) {
+      const undoEdit = beginUndoEdit('undoShowTransitiveEdges', 'redoShowTransitiveEdges')
+      resetGraph()
+      applyAlgorithm()
+      await applyLayout(true)
+      commitUndoEdit(undoEdit)
+    }
+  })
+  const gvim = graphComponent.inputMode
+  gvim.keyboardInputMode.addCommandBinding(
+    ICommand.UNDO,
+    (command, parameter, source) => {
+      getUndoEngine(graphComponent).undo()
+      return true
+    },
+    () => getUndoEngine(graphComponent).canUndo()
+  )
+
+  gvim.keyboardInputMode.addCommandBinding(
+    ICommand.REDO,
+    (command, parameter, source) => {
+      getUndoEngine(graphComponent).redo()
+      return true
+    },
+    () => getUndoEngine(graphComponent).canRedo()
+  )
+
+  packageTextBox = document.getElementById('packageTextBox')
+  packageTextBox.addEventListener('click', packageTextBox.select)
+  packageTextBox.addEventListener('input', () => {
+    packageTextBox.className = 'default'
+  })
+  packageTextBox.addEventListener('keydown', event => {
+    const key = event.which || event.keyCode
+    if (key === 13) {
+      loadGraph()
+      event.preventDefault()
+    }
+  })
 }
 
 /**
@@ -385,7 +488,13 @@ function initializeInputModes() {
       const existingPackages = new HashMap()
 
       // check if dependencies' circle was hit
-      if (item !== startNode) {
+      if (
+        item.tag &&
+        item.tag.pendingDependencies &&
+        clickIsInCircle(nodeBounds, clickPoint, nodeBounds.width)
+      ) {
+        handlePendingDependencies(item, existingPackages)
+      } else if (item !== startNode) {
         const undoEdit = beginUndoEdit('undoChangeStartNode', 'redoChangeStartNode')
         getUndoEngine(graphComponent).addUnit(new ChangedSetUndoUnit())
         graphComponent.currentItem = item
@@ -425,6 +534,7 @@ async function handlePendingDependencies(item, existingPackages) {
     })
     filteredGraph.nodePredicateChanged()
     filteredGraph.edgePredicateChanged()
+    applyAlgorithm()
     await applyLayout(true)
     commitUndoEdit(undoEdit)
     animateViewPort(item)
@@ -556,40 +666,59 @@ async function loadGraph() {
 
   addedEdges = []
 
-  resetGraph()
+  if (samplesComboBox.selectedIndex === SampleName.YFILES_MODULES_SAMPLE) {
+    resetGraph()
 
-  const builder = new GraphBuilder(graphComponent.graph)
-  builder.createNodesSource({
-    data: GraphData.nodes,
-    id: 'id',
-    labels: ['label']
-  })
-  builder.createEdgesSource(GraphData.edges, 'from', 'to')
+    const builder = new GraphBuilder(graphComponent.graph)
+    builder.createNodesSource({
+      data: GraphData.nodes,
+      id: 'id',
+      labels: ['label']
+    })
+    builder.createEdgesSource(GraphData.edges, 'from', 'to')
 
-  const graph = builder.buildGraph()
+    const graph = builder.buildGraph()
 
-  graph.nodes.forEach(node => {
-    const label = node.labels.first()
-    const nodeLayout = new Rect(
-      node.layout.x,
-      node.layout.y,
-      label.layout.width + 50,
-      node.layout.height
-    )
-    graph.setNodeLayout(node, nodeLayout)
-    graph.setLabelLayoutParameter(label, nodeLabelParameter)
-    node.tag = { highlight: false }
-  })
+    graph.nodes.forEach(node => {
+      const label = node.labels.first()
+      const nodeLayout = new Rect(
+        node.layout.x,
+        node.layout.y,
+        label.layout.width + 50,
+        node.layout.height
+      )
+      graph.setNodeLayout(node, nodeLayout)
+      graph.setLabelLayoutParameter(label, nodeLabelParameter)
+      node.tag = { highlight: false }
+    })
 
-  startNode = getInitialPackage('yfiles')
-  graphComponent.currentItem = startNode
+    startNode = getInitialPackage('yfiles')
+    graphComponent.currentItem = startNode
 
-  // initialize the values for yfiles/modules, so that we do not count them again
-  dependentsNo = 0
-  dependenciesNo = filteredGraph.nodes.size - 1
+    // initialize the values for yfiles/modules, so that we do not count them again
+    dependentsNo = 0
+    dependenciesNo = filteredGraph.nodes.size - 1
 
-  await applyLayout(false)
-  graph.undoEngine.clear()
+    applyAlgorithm()
+    await applyLayout(false)
+    graph.undoEngine.clear()
+  } else {
+    const packageText = packageTextBox.value
+    // check for empty package name
+    if (packageText.replace(/\s/g, '') === '') {
+      packageTextBox.value = 'Invalid Package'
+      packageTextBox.className = 'error'
+    } else {
+      // initialize dependents/dependencies values
+      dependentsNo = 0
+      dependenciesNo = 0
+      filteredNodes = new Set()
+      filteredEdges = new Set()
+      visitedPackages = new HashMap()
+      await updateGraph({ name: packageText, version: 'latest' }, false)
+      getUndoEngine(graphComponent).clear()
+    }
+  }
 }
 
 /**
@@ -618,6 +747,7 @@ async function updateGraph(pckg, incremental) {
     addedNodes = []
     filteredGraph.nodePredicateChanged()
     filteredGraph.edgePredicateChanged()
+    applyAlgorithm()
     await applyLayout(incremental)
     incrementalNodes = []
   } catch (e) {
@@ -860,9 +990,106 @@ async function fetchDependencies(pckg) {
   }
   return data.dependencies
     ? Object.keys(data.dependencies).map(key => {
-      return { name: key, version: data.dependencies[key].replace(/^[\^~]/, '') }
-    })
+        return { name: key, version: data.dependencies[key].replace(/^[\^~]/, '') }
+      })
     : []
+}
+
+/**
+ * Invokes the selected algorithms when another algorithm is chosen in the combo box.
+ * @returns {!Promise}
+ */
+async function onAlgorithmChanged() {
+  if (!algorithmComboBox) {
+    return
+  }
+
+  // only show button to toggle transitive edges when 'Transitive Reduction' is selected
+  const transitiveEdgesLabel = document.getElementById('showTransitiveEdgesLabel')
+  transitiveEdgesLabel.style.display =
+    algorithmComboBox.selectedIndex === 2 ? 'inline-block' : 'none'
+
+  if (incrementalNodes) {
+    incrementalNodes = []
+  }
+
+  resetGraph()
+  applyAlgorithm()
+  await applyLayout(true)
+  getUndoEngine(graphComponent).clear()
+}
+
+/**
+ * Loads the selected sample when the samples are switched in the combo box.
+ */
+function onSampleGraphChanged() {
+  // only show npm-toolbar when 'NPM Graph' is selected
+  const npmToolbar = document.getElementById('npm-toolbar')
+  npmToolbar.style.display =
+    samplesComboBox.selectedIndex === SampleName.NPM_PACKAGES_SAMPLE ? 'inline' : 'none'
+
+  // update graph information
+  if (samplesComboBox.selectedIndex === SampleName.YFILES_MODULES_SAMPLE) {
+    resetTable('yfiles')
+  } else {
+    resetTable(packageTextBox.value)
+  }
+
+  // load the selected sample graph
+  loadGraph()
+}
+
+/**
+ * Applies the selected algorithm to the graph.
+ * Algorithms are chosen using {@link algorithmComboBox}.
+ */
+function applyAlgorithm() {
+  const graph = filteredGraph
+  if (graph.nodes.size > 0) {
+    switch (algorithmComboBox.selectedIndex) {
+      default:
+      case AlgorithmName.ORIGINAL_GRAPH:
+        break
+      case AlgorithmName.TRANSITIVITY_CLOSURE: {
+        const transitivityClosure = new TransitiveClosure()
+        const transitivityClosureResult = transitivityClosure.run(graph)
+
+        const newEdges = transitivityClosureResult.edgesToAdd
+        newEdges.forEach(edge => {
+          const newEdge = graph.createEdge(edge.source, edge.target)
+          graph.setStyle(newEdge, addedEdgeStyle)
+
+          addedEdges.push(newEdge)
+          if (filteredEdges) {
+            filteredEdges.add(newEdge)
+            filteredGraph.edgePredicateChanged(newEdge)
+          }
+          incrementalEdges.push(newEdge)
+        })
+        break
+      }
+      case AlgorithmName.TRANSITIVITY_REDUCTION: {
+        const transitivityReduction = new TransitiveReduction()
+        const transitivityReductionResult = transitivityReduction.run(graph)
+
+        if (!removedEdgesSet) {
+          removedEdgesSet = new Set()
+        }
+
+        const transitiveEdges = transitivityReductionResult.edgesToRemove
+        transitiveEdges.forEach(edge => {
+          if (showTransitiveEdges) {
+            graph.setStyle(edge, removedEdgeStyle)
+            incrementalEdges.push(edge)
+          } else {
+            removedEdgesSet.add(edge)
+            filteredGraph.edgePredicateChanged()
+          }
+        })
+        break
+      }
+    }
+  }
 }
 
 /**
@@ -919,7 +1146,7 @@ async function filterGraph(clickedNode) {
     filteredEdges = new Set()
   }
 
-  if (true /*samplesComboBox.selectedIndex === SampleName.YFILES_MODULES_SAMPLE*/) {
+  if (samplesComboBox.selectedIndex === SampleName.YFILES_MODULES_SAMPLE) {
     startNode = clickedNode
 
     // take all in-edges and mark the other endpoint as a neighbor of clickedNode
@@ -927,12 +1154,12 @@ async function filterGraph(clickedNode) {
       const oppositeNode = edge.opposite(clickedNode)
       // we have to check if the node is already taken into consideration in the calculation of dependents
       if (!filteredNodes.has(oppositeNode)) {
-        filteredNodes.add(oppositeNode)
+        !filteredNodes.add(oppositeNode)
         dependentsNo++
       }
     })
 
-    filteredNodes.add(clickedNode)
+    !filteredNodes.add(clickedNode)
     collectConnectedNodes(clickedNode, fullGraph, true)
     collectConnectedNodes(clickedNode, fullGraph, false)
 
@@ -948,7 +1175,49 @@ async function filterGraph(clickedNode) {
       })
     }
 
+    if (algorithmComboBox.selectedIndex !== AlgorithmName.ORIGINAL_GRAPH) {
+      applyAlgorithm()
+    }
     return applyLayout(true)
+  } else {
+    const packageNode = graphComponent.currentItem
+    if (packageNode && packageNode instanceof INode) {
+      filteredNodes.add(packageNode)
+
+      filteredGraph.inEdgesAt(packageNode).forEach(edge => {
+        filteredEdges.add(edge)
+
+        const source = edge.sourceNode
+        filteredNodes.add(source)
+      })
+
+      const visited = []
+      const edgeStack = filteredGraph.outEdgesAt(packageNode).toArray()
+      while (edgeStack.length > 0) {
+        const edge = edgeStack.pop()
+        filteredEdges.add(edge)
+
+        const target = edge.targetNode
+        filteredNodes.add(target)
+        if (visited.indexOf(target) < 0) {
+          dependenciesNo++
+          visited.push(target)
+        }
+
+        filteredGraph.outEdgesAt(target).forEach(outEdge => {
+          if (!visited.includes(outEdge.targetNode)) {
+            edgeStack.push(outEdge)
+          }
+        })
+      }
+
+      filteredGraph.nodePredicateChanged()
+      filteredGraph.edgePredicateChanged()
+
+      return updateGraph(packageNode.tag.pkg, true)
+    } else {
+      return new Promise(() => {})
+    }
   }
 }
 
@@ -1050,6 +1319,16 @@ async function applyLayout(incremental) {
     layout.layoutMode = LayoutMode.FROM_SCRATCH
   }
 
+  if (samplesComboBox.selectedIndex === SampleName.NPM_PACKAGES_SAMPLE) {
+    // create alphabetic sequence constraints
+    let previous = nodes.first()
+    nodes.forEach(node => {
+      if (previous !== node) {
+        layoutData.sequenceConstraints.placeBefore(previous, node)
+        previous = node
+      }
+    })
+  }
   try {
     await new LayoutExecutor({
       graphComponent,
@@ -1059,6 +1338,9 @@ async function applyLayout(incremental) {
       animateViewport: true,
       portAdjustmentPolicy: PortAdjustmentPolicy.ALWAYS
     }).start()
+
+    // update the graph information with (intermediate) results
+    updateGraphInformation(startNode)
 
     // check where the mouse is located after layout and adjust highlight
     graphComponent.inputMode.itemHoverInputMode.updateHover()
@@ -1093,6 +1375,42 @@ function prepareSmoothLayoutAnimation() {
 }
 
 /**
+ * Changes the disabled-state of all UI elements in the toolbar.
+ * @param {boolean} disabled
+ */
+function setUIDisabled(disabled) {
+  graphComponent.inputMode.waitInputMode.waiting = disabled
+  samplesComboBox.disabled = disabled
+  algorithmComboBox.disabled = disabled
+  document.getElementById('showTransitiveEdgesButton').disabled = disabled
+  document.getElementById('loadDependenciesButton').disabled = disabled
+  document.getElementById('runLayoutButton').disabled = disabled
+  document.getElementById('packageTextBox').disabled = disabled
+}
+
+/**
+ * Checks if the given click-point belongs to one of the circles representing the dependencies of
+ * the node.
+ * @param {!Rect} nodeBounds the enlarged node bounds
+ * @param {!Point} clickPoint the clicked point
+ * @param {number} x the starting x-coordinate for defining the circle
+ * @returns {boolean}
+ */
+function clickIsInCircle(nodeBounds, clickPoint, x) {
+  if (samplesComboBox.selectedIndex === SampleName.YFILES_MODULES_SAMPLE) {
+    // there are no pending dependencies in yfiles-modules sample
+    return false
+  }
+
+  const radius = 10
+  const centerX = x + nodeBounds.x
+  const centerY = nodeBounds.y + nodeBounds.height * 0.5
+  return (
+    Math.pow(centerX - clickPoint.x, 2) + Math.pow(centerY - clickPoint.y, 2) <= Math.pow(radius, 2)
+  )
+}
+
+/**
  * Checks if the nodes of the given list have pending dependencies.
  * @param {!INode} packageNode the first node to check
  * @returns {boolean}
@@ -1110,6 +1428,38 @@ function existPendingRelations(packageNode) {
   )
 
   return pendingRelations
+}
+
+/**
+ * Updates the table when dependencies are loaded.
+ * @param {!INode} packageNode the start node
+ */
+function updateGraphInformation(packageNode) {
+  const table = document.getElementById('graph-information')
+  table.rows[0].cells[1].innerHTML = packageNode.labels.get(0).text
+
+  // remove the dependents row if the graph is not module
+  if (samplesComboBox.selectedIndex === SampleName.YFILES_MODULES_SAMPLE) {
+    removeClass(table.rows[1], 'row-invisible')
+    table.rows[1].cells[1].innerHTML = dependentsNo.toString()
+  } else {
+    addClass(table.rows[1], 'row-invisible')
+  }
+
+  // take packageText's dependencies and check if there exist pending dependencies
+  const dependencies = dependenciesNo
+  // if the graph is modules there exist no pending dependencies
+  const existPendingDependencies =
+    samplesComboBox.selectedIndex === SampleName.NPM_PACKAGES_SAMPLE
+      ? existPendingRelations(packageNode)
+      : false
+  table.rows[2].cells[1].innerHTML = `${dependencies}${
+    existPendingDependencies ? '<sup>+</sup>' : ''
+  }`
+
+  // update number of graph nodes and edges
+  table.rows[3].cells[1].innerHTML = filteredGraph.nodes.size.toString()
+  table.rows[4].cells[1].innerHTML = filteredGraph.edges.size.toString()
 }
 
 /**
@@ -1280,3 +1630,5 @@ class TagMementoSupport extends BaseClass(IMementoSupport) {
   }
 }
 
+// run the demo
+loadJson().then(checkLicense).then(run)

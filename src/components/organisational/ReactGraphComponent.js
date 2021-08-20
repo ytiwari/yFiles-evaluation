@@ -115,7 +115,6 @@ export default class ReactGraphComponent extends Component {
   }
 
   updateSearch() {
-    console.log('This is my search.....');
     this.graphSearch.updateSearch(this.$query)
   }
 
@@ -173,7 +172,6 @@ export default class ReactGraphComponent extends Component {
       printingSupport.printGraph(this.graphComponent.graph)
     })
     eventBus.subscribe('search-query-input', (query) => {
-      console.log('search>>>', query)
       this.$query = query
       this.updateSearch()
     })

@@ -30,7 +30,8 @@
 
 .demo-content {
   position: absolute;
-  top: 0;
+  /* top: 0;*/
+  top: 50px;
   left: 320px;
   right: 320px;
   bottom: 0;

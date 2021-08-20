@@ -24,7 +24,10 @@ const MainHeader = () =>{
                 <NavLink activeClassName={classes.active} to="/Tripudio-PLM/example6">Transitivity</NavLink>
                 </li>
                 <li>
-                <NavLink activeClassName={classes.active} to="/Tripudio-PLM/example7">Network Flow</NavLink>
+                <NavLink activeClassName={classes.active} to="/Tripudio-PLM/example7">Networkflows</NavLink>
+                </li>
+                <li>
+                <NavLink activeClassName={classes.active} to="/Tripudio-PLM/example8">Network Monitoring Demo</NavLink>
                 </li>
             </ul>
         </nav>

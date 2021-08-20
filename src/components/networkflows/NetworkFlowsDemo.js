@@ -30,6 +30,7 @@ import { Color, DefaultLabelStyle, EdgePathLabelModel, EdgeSides, EdgeStyleDecor
 import HTMLPopupSupport from './HTMLPopupSupport';
 import { EmptyReshapeHandleProvider, MinCutUndoUnit, NetworkFlowInputMode, TagUndoUnit } from './NetworkFlowsHelper';
 import { MinCutLine, NetworkFlowEdgeStyle, NetworkFlowNodeStyle } from './DemoStyles';
+// import { bindAction, bindChangeListener, bindCommand, checkLicense, showApp } from '../../resources/demo-app';
 import loadJson from '../../resources/load-json';
 /**
  * The GraphComponent.
@@ -75,7 +76,7 @@ let compoundEdit;
 /**
  * Runs the demo.
  */
-export default function run(gc, licenseData) {
+export function run(gc, licenseData) {
     License.value = licenseData;
     graphComponent = gc
    // graphComponent = new GraphComponent('graphComponent');
@@ -132,7 +133,7 @@ function initializeGraphComponent() {
         distance: 25
     });
     // Creates the pop-up for the edge pop-up template
-   // edgePopup = new HTMLPopupSupport(graphComponent, edgePopupContent, edgeLabelModel.createDefaultParameter());
+    edgePopup = new HTMLPopupSupport(graphComponent, edgePopupContent, edgeLabelModel.createDefaultParameter());
     graphComponent.addZoomChangedListener(() => graphComponent.invalidate());
 }
 /**
@@ -221,14 +222,14 @@ function createEditorInputMode() {
         edgeCreatedCompoundEdit.commit();
     }));
     // node creation
-    // inputMode.addNodeCreatedListener((sender, event) => {
-    //     event.item.tag = {
-    //         supply: 0,
-    //         flow: 0,
-    //         adjustable: document.getElementById('algorithmComboBox').selectedIndex ===
-    //             MIN_COST_FLOW
-    //     };
-    // });
+    inputMode.addNodeCreatedListener((sender, event) => {
+        event.item.tag = {
+            supply: 0,
+            flow: 0,
+            adjustable: document.getElementById('algorithmComboBox').selectedIndex ===
+                MIN_COST_FLOW
+        };
+    });
     inputMode.addCanvasClickedListener(() => (edgePopup.currentItem = null));
     inputMode.addItemClickedListener(onClicked);
     graphComponent.inputMode = inputMode;
@@ -275,15 +276,15 @@ function updateEdgeThickness(edge) {
             style: new DefaultLabelStyle({ textFill: 'black' })
         });
         // add label for cost
-        // const algorithmComboBox = document.getElementById('algorithmComboBox');
-        // if (algorithmComboBox.selectedIndex === MIN_COST_FLOW) {
-        //     graphComponent.graph.addLabel({
-        //         owner: edge,
-        //         text: `${edge.tag.cost} \u20AC `,
-        //         tag: 'cost',
-        //         style: graphComponent.graph.edgeDefaults.labels.style
-        //     });
-        // }
+        const algorithmComboBox = document.getElementById('algorithmComboBox');
+        if (algorithmComboBox.selectedIndex === MIN_COST_FLOW) {
+            graphComponent.graph.addLabel({
+                owner: edge,
+                text: `${edge.tag.cost} \u20AC `,
+                tag: 'cost',
+                style: graphComponent.graph.edgeDefaults.labels.style
+            });
+        }
     }
 }
 /**
@@ -680,13 +681,40 @@ function generateColors(startColor, endColor, gradientCount) {
 /**
  * Wires up the UI.
  */
-
+// function registerCommands() {
+//     bindAction("button[data-command='New']", () => {
+//         graphComponent.graph.clear();
+//         graphComponent.graph.undoEngine.clear();
+//     });
+//     bindCommand("button[data-command='FitContent']", ICommand.FIT_GRAPH_BOUNDS, graphComponent);
+//     bindCommand("button[data-command='ZoomIn']", ICommand.INCREASE_ZOOM, graphComponent);
+//     bindCommand("button[data-command='ZoomOut']", ICommand.DECREASE_ZOOM, graphComponent);
+//     bindCommand("button[data-command='ZoomOriginal']", ICommand.ZOOM, graphComponent, 1.0);
+//     bindCommand("button[data-command='Undo']", ICommand.UNDO, graphComponent);
+//     bindCommand("button[data-command='Redo']", ICommand.REDO, graphComponent);
+//     bindChangeListener("select[data-command='AlgorithmSelectionChanged']", onAlgorithmChanged);
+//     bindAction("button[data-command='Reload']", () => {
+//         edgePopup.currentItem = null;
+//         createSampleGraph();
+//     });
+//     bindAction("button[data-command='Layout']", () => {
+//         edgePopup.currentItem = null;
+//         runLayout(false);
+//     });
+//     document.getElementById('costPlus').addEventListener('click', () => updateCostForm(1), true);
+//     document.getElementById('costMinus').addEventListener('click', () => updateCostForm(-1), true);
+//     document.getElementById('apply').addEventListener('click', () => {
+//         runFlowAlgorithm();
+//         runLayout(true);
+//     }, true);
+// }
 /**
  * Handles a selection change in the algorithm combo box.
  */
-function onAlgorithmChanged() {
+export function onAlgorithmChanged() {
+    console.log('algochange being called>>>');
     return __awaiter(this, void 0, void 0, function* () {
-        updateDescriptionText();
+      //  updateDescriptionText();
         graphComponent.selection.clear();
         edgePopup.currentItem = null;
         const graph = graphComponent.graph;
@@ -751,11 +779,10 @@ function updateCostForm(newValue) {
  * @param disabled True if the elements should be disabled, false otherwise
  */
 function setUIDisabled(disabled) {
-    ;
-    document.getElementById('newButton').disabled = disabled;
-    document.getElementById('algorithmComboBox').disabled = disabled;
-    document.getElementById('reloadButton').disabled = disabled;
-    document.getElementById('layoutButton').disabled = disabled;
+    // document.getElementById('newButton').disabled = disabled;
+    // document.getElementById('algorithmComboBox').disabled = disabled;
+    // document.getElementById('reloadButton').disabled = disabled;
+    // document.getElementById('layoutButton').disabled = disabled;
 }
 /**
  * Loads and prepares the input graph.
@@ -912,15 +939,15 @@ function createSampleGraph() {
         else if (graph.outDegree(node) === 0) {
             supply = -0.5;
         }
-        // node.tag = {
-        //     supply,
-        //     flow: 0.5 * node.layout.height,
-        //     adjustable: document.getElementById('algorithmComboBox').selectedIndex ===
-        //         MIN_COST_FLOW
-        // };
+        node.tag = {
+            supply,
+            flow: 0.5 * node.layout.height,
+            adjustable: document.getElementById('algorithmComboBox').selectedIndex ===
+                MIN_COST_FLOW
+        };
         calculateNodeSize(node);
     });
-   // onAlgorithmChanged();
+    onAlgorithmChanged();
 }
 // run the demo
 //loadJson().then(checkLicense).then(run);

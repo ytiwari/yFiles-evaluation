@@ -100,7 +100,6 @@ export default class GraphSearch {
    * @param {!string} searchText The text of the search query.
    */
   updateSearch(searchText) {
-    console.log('search text>>', searchText);
     // we use the search highlight manager to highlight matching items
     const manager = this.searchHighlightIndicatorInstaller
 
@@ -112,8 +111,6 @@ export default class GraphSearch {
         .filter(node => this.matches(node, searchText))
         .forEach(node => {
           manager.addHighlight(node)
-          this.matchingNodes.push(node)
-          console.log('node>>', node);
           this.matchingNodes.push(node)
         })
     }

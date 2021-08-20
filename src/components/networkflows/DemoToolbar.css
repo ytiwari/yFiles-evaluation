@@ -95,19 +95,19 @@
   margin: 0 10px;
 }
 .demo-icon-yIconReload {
-  background-image: url('../assets/reload-16.svg');
+  background-image: url('../../assets/reload-16.svg');
 }
 .demo-icon-yIconZoomOriginal {
-  background-image: url('../assets/zoom-original-16.svg');
+  background-image: url('../../assets/zoom-original-16.svg');
 }
 .demo-icon-yIconZoomIn {
-  background-image: url('../assets/magnify-16.svg');
+  background-image: url('../../assets/magnify-16.svg');
 }
 .demo-icon-yIconZoomOut {
-  background-image: url('../assets/demagnify-16.svg');
+  background-image: url('../../assets/demagnify-16.svg');
 }
 .demo-icon-yIconZoomFit {
-  background-image: url('../assets/fit-16.svg');
+  background-image: url('../../assets/fit-16.svg');
 }
 
 .search {

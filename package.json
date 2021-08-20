@@ -8,20 +8,21 @@
     "@testing-library/jest-dom": "^5.14.1",
     "@testing-library/react": "^12.0.0",
     "@testing-library/user-event": "^13.1.9",
+    "csv-parse": "^4.12.0",
+    "d3": "^7.0.1",
     "history": "^4.10.1",
     "json5": "^2.2.0",
+    "jspdf": "^2.1.1",
     "node-sass": "^4.14.1",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-router-dom": "^4.3.1",
     "react-scripts": "4.0.3",
-    "web-vitals": "^2.0.1",
-    "yfiles": "../../yFiles-for-HTML-Complete-2.4.0.2-Evaluation/lib-dev/es-modules/yfiles-24.0.2-eval-dev.tgz",    
-    "csv-parse": "^4.12.0",
-    "jspdf": "^2.1.1",    
     "svg2pdf.js": "^2.0.0",
     "vue": "^2.6.14",
-    "vue-template-compiler": "^2.6.14"
+    "vue-template-compiler": "^2.6.14",
+    "web-vitals": "^2.0.1",
+    "yfiles": "../../yFiles-for-HTML-Complete-2.4.0.2-Evaluation/lib-dev/es-modules/yfiles-24.0.2-eval-dev.tgz"
   },
   "scripts": {
     "preinstall": "cd ../../yFiles-for-HTML-Complete-2.4.0.2-Evaluation && npm run prepare-package",
@@ -46,6 +47,7 @@
     ]
   },
   "devDependencies": {
+    "@types/d3": "~6.7.1",
     "fs-extra": "^10.0.0",
     "worker-loader": "^3.0.8"
   },

@@ -106,7 +106,7 @@ export default class PackageNodeStyleDecorator extends NodeStyleBase {
 
     const packageContainer = window.document.createElementNS(svgNS, 'g')
     const packageImage = window.document.createElementNS('http://www.w3.org/2000/svg', 'image')
-    packageImage.setAttributeNS('http://www.w3.org/1999/xlink', 'src', './package.svg')
+    packageImage.setAttributeNS('http://www.w3.org/1999/xlink', 'src', './resources/package.svg')
     packageImage.setAttribute('width', '24')
     packageImage.setAttribute('height', '24')
     packageImage.setAttribute('transform', `translate(${x + 10} ${y + 3})`)

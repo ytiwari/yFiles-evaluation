@@ -102,9 +102,7 @@ export default class GraphSearch {
     // first remove previous highlights
     manager.clearHighlights()
     this.matchingNodes = []
-    console.log('This is my search text', searchText);
     if (searchText && searchText.trim() !== '') {
-      console.log('This is my search text', this.graphComponent.graph.nodes);
       this.graphComponent.graph.nodes
         .filter((node) => this.matches(node, searchText))
         .forEach((node) => {
@@ -112,7 +110,6 @@ export default class GraphSearch {
           this.matchingNodes.push(node)
         })
     }
-    console.log('my matching nodes>>>', this.matchingNodes);
   }
 
   /**

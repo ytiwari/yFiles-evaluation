@@ -7,8 +7,9 @@
  import ReactGraphComponent from './components/rect-graph/ReactGraphComponent';
  import SampleCSVComponent from './components/sample-csv/sampleCsv';
  import OrganisationalChart from './components/organisational/OrganisationalChart';
- import TransitivityReactDemo from './components/transitivity/TransitivityReactDemo';
- import NetworkFlowReactDemo from './components/networkflows/NetworkFlowReactDemo';
+ import TransitivityDiagram from './components/transitivity/TransitivityReactDemo';
+ import NetworkflowsReactdemo from './components/networkflows/NetworkFlowReactDemo';
+ import NestworkMonitoringReactDemo from './components/networkmonitoring/NetworkMonitoringReactDemo';
  import DemoDescription from './components/DemoDescription.jsx'
  import yLogo from './assets/ylogo.svg'
  import DemoDataPanel from './components/DemoDataPanel.jsx'
@@ -25,8 +26,9 @@ function App(){
         <Route exact={true} path='/Tripudio-PLM/example3' component={ReactGraphComponent} />
         <Route exact={true} path='/Tripudio-PLM/example4' component={SampleCSVComponent} />
         <Route exact={true} path='/Tripudio-PLM/example5' component={OrganisationalChart} />
-        <Route exact={true} path='/Tripudio-PLM/example6' component={TransitivityReactDemo} />
-        <Route exact={true} path='/Tripudio-PLM/example7' component={NetworkFlowReactDemo} />
+        <Route exact={true} path='/Tripudio-PLM/example6' component={TransitivityDiagram} />
+        <Route exact={true} path='/Tripudio-PLM/example7' component={NetworkflowsReactdemo} />
+        <Route exact={true} path='/Tripudio-PLM/example8' component={NestworkMonitoringReactDemo} />
         </main>
       </div>
     );

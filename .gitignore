@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/yFiles-for-HTML-Complete-2.4.0.2-Evaluation
 /.pnp
 .pnp.js
 
@@ -20,3 +21,4 @@ license.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
